@@ -5,6 +5,7 @@ import time
 from xml.etree import ElementTree as ET
 import os
 import gzip
+import multiprocessing
 
 def timing(method):
     """
@@ -138,7 +139,7 @@ def if_filename_in_already_downloaded_txt_file(filename: str):
 def get_all_imgs_from_memeImages(extension=".jpg") -> list:
 	files = []
 
-	for file in os.listdir("../memeImages"):
+	for file in os.listdir("static/memeImages"):
 		if file.endswith(extension) and not if_filename_in_already_downloaded_txt_file(file):
 			files.append(file)
 			print(f"Added {file}")
@@ -189,7 +190,7 @@ def handle_download(array, batch_size) -> list:
 			"""
 			converted_text = []
 			for i in range(len(current_batch)):
-				text = get_text(f"../memeImages/{current_batch[i]}")
+				text = get_text(f"static/memeImages/{current_batch[i]}")
 				if text == False:
 					continue
 				else:
@@ -202,22 +203,25 @@ def handle_download(array, batch_size) -> list:
 			current_batch.append(array[i])
 		else:
 			current_batch.append(array[i])
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 @timing
 def main():
 	start_time = time.time()
 
-	jpegs = get_all_imgs_from_memeImages('.png')
+	jpegs = get_all_imgs_from_memeImages('.jpg')
 
 	handle_download(jpegs, 10)
-
-	add_closing_div_to_xml_file()
 
 	get_rid_of_0x0c()
 
 	end_time = time.time()
 
-	print(f"Ran in {round(end_time - start_time, 2)} seconds")
-
+	print(f"Ran in {round(end_time - start_time, 2)} seconds | Added {len(jpegs)} memes")
 
 if __name__ == "__main__":
 	main()
