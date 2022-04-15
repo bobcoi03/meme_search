@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+</head>
+<body>
+	<form method="post">
+		<input type="text" name="search_query" value="{{ search_query }}">
+		<button type="submit">Search</button>
+	</form>
+	<p>{{ results_length }} results in {{ run_time }}</p>
+	<div id="display_column" style="display: flex;width: 100%;flex-wrap: wrap;justify-content: center;max-width: 1000px;margin: auto; padding: 3px" >
+		{% for image_path in image_names %}
+			<div>
+				<a href="{{ image_path }}" target="_blank">
+					<img src="{{ image_path }}" style="max-height: 500px;max-width: 300px;">
+				</a>	
+			</div>
+		{% endfor %}
+	</div>
+</body>
+</html>
