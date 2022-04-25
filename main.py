@@ -6,7 +6,14 @@ from xml.etree import ElementTree as ET
 import os
 import gzip
 import multiprocessing
-
+import csv
+"""
+	This script loops through jpgs, pngs in static/memeImages/
+	using pytesseract on each images. 
+	the text output from the pytesseract orc is saved in
+	a data.xml file and the filename is written to already
+	downloaded.txt
+"""
 def timing(method):
     """
     Quick and dirty decorator to time functions: it will record the time when
@@ -43,52 +50,62 @@ def get_text(path_to_img: str):
 	img = cv2.imread(path_to_img)
 	# Convert the image to gray scale
 	gray = 0
-	try:
-		gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-	except cv2.error:
-		return False
 
-	# Performing OTSU threshold
-	ret, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+	start_time = time.time()
+	end_time = 0
+	timer = 0
 
-	# Specify structure shape and kernel size.
-	# Kernel size increases or decreases the area
-	# of the rectangle to be detected.
-	# A smaller value like (10, 10) will detect
-	# each word instead of a sentence.
-	rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (18, 18))
-		 
-	# Applying dilation on the threshold image
-	dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
+	while timer < 100:
+		timer = time.time() - start_time
 
-	# Finding contours
-	contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL,
-                                                 cv2.CHAIN_APPROX_NONE)
-	# Creating a copy of image
-	im2 = img.copy()
-	# Looping through the identified contours
-	# Then rectangular part is cropped and passed on
-	# to pytesseract for extracting text from it
-	# Extracted text is then written into the text file
-	_text = ""
-	for cnt in contours:
-		x, y, w, h = cv2.boundingRect(cnt)
-		# Drawing a rectangle on copied image
-		rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
-		# Cropping the text block for giving input to OCR
-		cropped = im2[y:y + h, x:x + w]
-		# Apply OCR on the cropped image
-		text = pytesseract.image_to_string(cropped)
+		try:
+			gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+		except cv2.error:
+			return False
 
-		_text += text
-	"""
-	Get rid of illeal characters for xml file
-	"""
-	delete = [">", "<", "&" , "'", "\""]
-	for illegal_char in range(len(delete)):
-		_text = _text.replace(delete[illegal_char], "")
+		# Performing OTSU threshold
+		ret, thresh1 = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
 
-	return _text
+		# Specify structure shape and kernel size.
+		# Kernel size increases or decreases the area
+		# of the rectangle to be detected.
+		# A smaller value like (10, 10) will detect
+		# each word instead of a sentence.
+		rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (18, 18))
+			 
+		# Applying dilation on the threshold image
+		dilation = cv2.dilate(thresh1, rect_kernel, iterations = 1)
+
+		# Finding contours
+		contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL,
+	                                                 cv2.CHAIN_APPROX_NONE)
+		# Creating a copy of image
+		im2 = img.copy()
+		# Looping through the identified contours
+		# Then rectangular part is cropped and passed on
+		# to pytesseract for extracting text from it
+		# Extracted text is then written into the text file
+		_text = ""
+		for cnt in contours:
+			x, y, w, h = cv2.boundingRect(cnt)
+			# Drawing a rectangle on copied image
+			rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (0, 255, 0), 2)
+			# Cropping the text block for giving input to OCR
+			cropped = im2[y:y + h, x:x + w]
+			# Apply OCR on the cropped image
+			text = pytesseract.image_to_string(cropped)
+
+			_text += text
+		"""
+		Get rid of illeal characters for xml file
+		"""
+		delete = [">", "<", "&" , "'", "\""]
+		for illegal_char in range(len(delete)):
+			_text = _text.replace(delete[illegal_char], "")
+
+		return _text
+	print("print false")
+	return False
 
 @timing
 def add_encoding_to_xml_file():
@@ -107,7 +124,7 @@ def add_closing_div_to_xml_file():
 	file.close()
 
 @timing
-def add_to_xml_file(text: list, filename: list):
+def add_to_xml_file(text: list, filename: list, url: list):
 	"""
 	Append 	
 			<doc>
@@ -119,7 +136,7 @@ def add_to_xml_file(text: list, filename: list):
 	file = open("data_uncleaned.xml", "a")
 	
 	for i in range(len(text)):
-		file.write(f"<doc><abstract>{text[i]}</abstract><filename>{filename[i]}</filename></doc>\n")
+		file.write(f"<doc><abstract>{text[i]}</abstract><filename>{filename[i]}</filename><url>{url[i]}</url></doc>\n")
 
 	print(f"Successfully added {len(text)} image data to data.xml")
 	file.close()
@@ -166,13 +183,13 @@ def add_to_already_downloaded_txt_file(filenames: list):
 	file.close()
 
 @timing
-def handle_download(array, batch_size) -> list:
+def handle_download(array, urls, batch_size):
 	"""
 	This function downloads text and filename to data.xml
 	in batches of size batch_size 
 	"""
-	array_2d = [] # 2d array of all filenames
 	current_batch = []	# len(current_batch) = batch_size
+	current_batch_urls = []
 	length = len(array)
 	break_points = length // batch_size
 
@@ -183,8 +200,6 @@ def handle_download(array, batch_size) -> list:
 
 	for i in range(length):
 		if i in list_of_break_points:
-
-			array_2d.append(current_batch)
 			"""
 			Run Download Code here
 			"""
@@ -196,26 +211,45 @@ def handle_download(array, batch_size) -> list:
 				else:
 					converted_text.append(text)
 				print(f"getting text from {current_batch[i]}")
-			add_to_xml_file(converted_text, current_batch)
+			add_to_xml_file(converted_text, current_batch, current_batch_urls)
 			add_to_already_downloaded_txt_file(current_batch)
 
 			current_batch = []
+			current_batch_urls = []
+
+			current_batch_urls.append(urls[i])
 			current_batch.append(array[i])
 		else:
 			current_batch.append(array[i])
+			current_batch_urls.append(urls[i])
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
+def search_csv(filename):
+	# given filename -- return url
+	csv_file = csv.reader(open('filename_url.csv', 'r'), delimiter=',')
+
+	for row in csv_file:
+		if filename == row[0]:
+			return row[1]
+
 @timing
 def main():
-	start_time = time.time()
 
 	jpegs = get_all_imgs_from_memeImages('.jpg')
 
-	handle_download(jpegs, 10)
+	list_of_urls = []
+	
+	start_time = time.time()
+	
+	for i in range(len(jpegs)):
+		list_of_urls.append(search_csv(jpegs[i]))
+	print(len(list_of_urls))
+	
+	handle_download(jpegs, list_of_urls, 10)
 
 	get_rid_of_0x0c()
 
@@ -223,34 +257,6 @@ def main():
 
 	print(f"Ran in {round(end_time - start_time, 2)} seconds | Added {len(jpegs)} memes")
 
+
 if __name__ == "__main__":
 	main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
