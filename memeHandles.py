@@ -184,7 +184,7 @@ def chunks(lst, n):
 def write_to_csv(filenames: list, urls: list):
 	import csv
 
-	with open('filename_url.csv','w',encoding='UTF8') as f:
+	with open('filename_url.csv','a',encoding='UTF8') as f:
 		writer = csv.writer(f)
 
 		for i in range(len(filenames)):
