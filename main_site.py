@@ -31,7 +31,7 @@ def search_query(search_query):
 
 	image_names = []
 	for i in range(len(search_results)):
-		if search_results[i] == 'None':
+		if search_results[i][0].url == 'None':
 			continue
 		image_names.append(f"{search_results[i][0].url}")
 
